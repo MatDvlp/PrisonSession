@@ -1,5 +1,5 @@
 # PrisonSession
-A tools for follow ure minage session on the Prison of Rinaorc
+## Il est nécessaire d'installer [nodeJS](https://nodejs.org/fr) pour utiliser cela
 
 ## Installation
 ### 1. Dans un premier temps
@@ -19,4 +19,5 @@ Vous allez ouvrir le fichier config.json et remplir les deux champs, pour pseudo
 
 ## Utilisation
 Pour utiliser l'outil, il vous suffit de le lancer en démarrant start.bat ! Bonne utilisation. 
-![Capture](https://github.com/MatDvlp/PrisonSession/assets/87903769/1f4cfe7d-c0f9-4e62-b5b3-c6ce3b54b444)
+![image](https://github.com/MatDvlp/PrisonSession/assets/87903769/366c74a5-49c8-4df5-b44f-b194d102d666)
+
