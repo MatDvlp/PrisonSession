@@ -1,4 +1,7 @@
 {
+  "module": {
+    "keys": true
+  },
   "api-token": "",
   "pseudo": "HeWaitsForAdrien"
 }
