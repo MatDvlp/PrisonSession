@@ -70,6 +70,7 @@ let startRc;
 let startTokens;
 let startItemsDropped;
 let startBlockMined;
+let startKeys;
 
 const scriptStartTime = new Date();
 
@@ -87,6 +88,12 @@ async function axiosPing() {
         startTokens = prisonPlayerData.data.stats[7].value;
         startItemsDropped = prisonPlayerData.data.stats[9].value;
         startBlockMined = prisonPlayerData.data.stats[3].value
+        startKeys = {
+            "lunaire": prisonPlayerData.data.keys.LUNAIRE,
+            "astral": prisonPlayerData.data.keys.ASTRAL,
+            "nebuleux":  prisonPlayerData.data.keys.NEBULEUSE
+        }
+        console.log(startKeys)
 
     } catch (error) {
         console.error(chalk.red("Erreur lors de la récupération des données initiales :"), error);
@@ -111,23 +118,44 @@ async function main() {
             }
         });
 
+        /*
+         * Time manager
+         */
         const currentTime = new Date();
         const elapsedTime = Math.floor((currentTime - scriptStartTime) / 1000);
         const elapsedMinutes = Math.floor(elapsedTime / 60);
         const elapsedSeconds = elapsedTime % 60;
 
+        /*
+         * Ressources
+         */
         const generateRc = prisonPlayerData.data.stats[8].value - startRc;
         const generateTokens = prisonPlayerData.data.stats[7].value - startTokens;
-        const generateItems = prisonPlayerData.data.stats[9].value - startItemsDropped;
         const minedBlocks = prisonPlayerData.data.stats[3].value - startBlockMined
 
-       /*  console.log(chalk.blue("Mise à jour des statistiques de votre session"));
-        console.log(`RC généré: ${formatNumber(generateRc)}`);
-        console.log(`Tokens générés: ${formatNumber(generateTokens)}`);
-        console.log(`Items proc: ${formatNumber(generateItems)}`); */
-        const table = new Table({
+        /*
+         * Scanner proc
+         */
+        const generateItems = prisonPlayerData.data.stats[9].value - startItemsDropped;
+        const itemsAverage = minedBlocks / generateItems
+
+        /*
+         * Keys
+         */
+        const generateKeys = {
+            "lunaire": prisonPlayerData.data.keys.LUNAIRE - startKeys.lunaire,
+            "astral": prisonPlayerData.data.keys.ASTRAL - startKeys.astral,
+            "nebuleux":  prisonPlayerData.data.keys.NEBULEUSE - startKeys.nebuleux
+        }
+        const averageKeys = {
+            perBlocks: minedBlocks / (Object.values(generateKeys).reduce((sum, value) => sum + value, 0)),
+            perMinutes: elapsedSeconds / (Object.values(generateKeys).reduce((sum, value) => sum + value, 0))
+        }
+
+
+        const firstTable = new Table({
             head: ['Temps écoulé', 'Blocs minés', 'RC générés', 'Tokens générés', 'Items proc'],
-            colWidths: [20, 20, 20, 20],
+            colWidths: [20, 20, 20, 30],
             chars: { 'top': '═' , 'top-mid': '╤' , 'top-left': '╔' , 'top-right': '╗'
                 , 'bottom': '═' , 'bottom-mid': '╧' , 'bottom-left': '╚' , 'bottom-right': '╝'
                 , 'left': '║' , 'left-mid': '╟' , 'mid': '─' , 'mid-mid': '┼'
@@ -139,17 +167,38 @@ async function main() {
             }
         });
 
-        // Ajouter une ligne au tableau avec les données actuelles
-        table.push([
+        firstTable.push([
             `${elapsedMinutes}m ${elapsedSeconds}s`,
             formatNumber(minedBlocks),
             formatNumber(generateRc),
             formatNumber(generateTokens),
-            formatNumber(generateItems)
+            formatNumber(generateItems) + " | " + `${chalk.greenBright(`1 proc / ${formatNumber(Math.round(itemsAverage))} blocks`)}`
         ]);
 
+        const secondTable = new Table({
+            head: ['Clef Lunaire', 'Clef Astrale', 'Clef nébuleuse', 'Total'],
+            colWidths: [20, 20, 20, 30],
+            chars: { 'top': '═' , 'top-mid': '╤' , 'top-left': '╔' , 'top-right': '╗'
+                , 'bottom': '═' , 'bottom-mid': '╧' , 'bottom-left': '╚' , 'bottom-right': '╝'
+                , 'left': '║' , 'left-mid': '╟' , 'mid': '─' , 'mid-mid': '┼'
+                , 'right': '║' , 'right-mid': '╢' , 'middle': '│' },
+            style: {
+                head: ['magenta'],
+                border: [],
+                compact: false
+            }
+        });
+
+        secondTable.push([
+            generateKeys.lunaire,
+            generateKeys.astral,
+            generateKeys.nebuleux,
+            `${Object.values(generateKeys).reduce((sum, value) => sum + value, 0)} | ` + `${chalk.greenBright(`1 keys /${formatNumber(Math.round(averageKeys.perBlocks))} blocks`)}`
+        ])
+
         console.log(chalk.bold(`Statistiques de la session de minage de ${config.pseudo}:`));
-        console.log(table.toString());
+        console.log(firstTable.toString());
+        console.log(secondTable.toString());
     } catch (error) {
         console.error(chalk.red("Erreur lors de la récupération des données :"), error);
     }
