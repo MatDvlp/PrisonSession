@@ -2,6 +2,9 @@ const axios = require('axios');
 const config = require('./config.json');
 const chalk = require('chalk');
 const Table = require('cli-table3');
+const { v4: uuidv4 } = require('uuid')
+const path = require('path')
+const fs = require('fs')
 
 function formatNumber(number) {
     if (number === undefined || number === null) return 'N/A';
@@ -57,7 +60,70 @@ function progressBar(durationInSeconds) {
     drawProgressBar(0);
 }
 
-console.log(chalk.magenta("\n" +
+/*
+ * Class
+ */
+
+class SessionManager {
+    constructor(filePath) {
+        this.filePath = path.resolve(filePath);
+    }
+
+    readFile() {
+        try {
+            const data = fs.readFileSync(this.filePath, 'utf8');
+            return JSON.parse(data);
+        } catch (err) {
+            console.error(`Erreur lors de la lecture du fichier : ${err}`);
+            return {};
+        }
+    }
+
+    writeFile(data) {
+        try {
+            fs.writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf8');
+        } catch (err) {
+            console.error(`Une erreur est survenue : ${err}`);
+        }
+    }
+
+    createSession(sessionId, pseudo, date, duration, token, rc, items, itemAverage, blocks) {
+        const sessions = this.readFile();
+        sessions[sessionId] = {
+            "name": pseudo,
+            "date": date,
+            "duration": duration,
+            "token": token,
+            "rc": rc,
+            "items": {
+                "itemGenerate": items,
+                "blocksBrokenPerItems": itemAverage
+            },
+            "blocks": blocks,
+        };
+        this.writeFile(sessions);
+    }
+
+    deleteSession(sessionId) {
+        const sessions = this.readFile();
+        if (sessions[sessionId]) {
+            delete sessions[sessionId];
+            this.writeFile(sessions);
+        } else {
+        }
+    }
+
+    getSession(sessionId) {
+        const sessions = this.readFile();
+        if (sessions[sessionId]) {
+            return sessions[sessionId];
+        } else {
+            return null;
+        }
+    }
+}
+
+console.log(chalk.hex("AD4CF5")("\n" +
     "__________         .__                         .____                     __                   \n" +
     "\\______   \\_______ |__|  ______ ____    ____   |    |     ____    ____  |  | __  ____ _______ \n" +
     " |     ___/\\_  __ \\|  | /  ___//  _ \\  /    \\  |    |    /  _ \\ _/ ___\\ |  |/ /_/ __ \\\\_  __ \\\n" +
@@ -65,7 +131,15 @@ console.log(chalk.magenta("\n" +
     " |____|     |__|   |__|/____  >\\____/ |___|  / |_______ \\\\____/  \\___  >|__|_ \\ \\___  >|__|   \n" +
     "                            \\/             \\/          \\/            \\/      \\/     \\/        \n"))
 
+console.log(chalk.hex("F5944C").bold(`Génération de l'identifiant de votre session...`));
+const sessionId = uuidv4()
+const creationDate = Date.now()
+const sessionManager = new SessionManager('./sessions.json')
+sessionManager.createSession(sessionId, config.pseudo, creationDate, "0", "0", "0", "0", "0", "0")
+console.log(chalk.hex("6BF54C")(`[+] L'identifiant a été généré avec succès : ${sessionId} !`))
 console.log(chalk.bold("Affichage de vos statistiques dans une minute, merci de patienter."))
+const { exec } = require('child_process');
+
 let startRc;
 let startTokens;
 let startItemsDropped;
@@ -93,7 +167,6 @@ async function axiosPing() {
             "astral": prisonPlayerData.data.keys.ASTRAL,
             "nebuleux":  prisonPlayerData.data.keys.NEBULEUSE
         }
-        console.log(startKeys)
 
     } catch (error) {
         console.error(chalk.red("Erreur lors de la récupération des données initiales :"), error);
@@ -102,13 +175,13 @@ async function axiosPing() {
 
 async function main() {
     console.clear();
-    console.log(chalk.magenta("\n" +
-        "__________        .__                         .____                  __                 \n" +
-        "\\______   \\_______|__| __________   ____      |    |    ____   ____ |  | __ ___________ \n" +
-        " |     ___/\\_  __ \\  |/  ___/  _ \\ /    \\     |    |   /  _ \\_/ ___\\|  |/ // __ \\_  __ \\\n" +
-        " |    |     |  | \\/  |\\___ (  <_> )   |  \\    |    |__(  <_> )  \\___|    <\\  ___/|  | \\/\n" +
-        " |____|     |__|  |__/____  >____/|___|  /    |_______ \\____/ \\___  >__|_ \\\\___  >__|   \n" +
-        "                          \\/           \\/             \\/          \\/     \\/    \\/       \n"))
+    console.log(chalk.hex("AD4CF5")("\n" +
+        "__________         .__                         .____                     __                   \n" +
+        "\\______   \\_______ |__|  ______ ____    ____   |    |     ____    ____  |  | __  ____ _______ \n" +
+        " |     ___/\\_  __ \\|  | /  ___//  _ \\  /    \\  |    |    /  _ \\ _/ ___\\ |  |/ /_/ __ \\\\_  __ \\\n" +
+        " |    |     |  | \\/|  | \\___ \\(  <_> )|   |  \\ |    |___(  <_> )\\  \\___ |    < \\  ___/ |  | \\/\n" +
+        " |____|     |__|   |__|/____  >\\____/ |___|  / |_______ \\\\____/  \\___  >|__|_ \\ \\___  >|__|   \n" +
+        "                            \\/             \\/          \\/            \\/      \\/     \\/        \n"))
     try {
         const prisonPlayerData = await axios({
             url: `https://api.rinaorc.com/prison/${config.pseudo}`,
@@ -143,13 +216,12 @@ async function main() {
          * Keys
          */
         const generateKeys = {
-            "lunaire": prisonPlayerData.data.keys.LUNAIRE - startKeys.lunaire,
-            "astral": prisonPlayerData.data.keys.ASTRAL - startKeys.astral,
-            "nebuleux":  prisonPlayerData.data.keys.NEBULEUSE - startKeys.nebuleux
+            "lunaire": Math.abs(prisonPlayerData.data.keys.LUNAIRE - startKeys.lunaire),
+            "astral": Math.abs(prisonPlayerData.data.keys.ASTRAL - startKeys.astral),
+            "nebuleux": Math.abs(prisonPlayerData.data.keys.NEBULEUSE - startKeys.nebuleux)
         }
         const averageKeys = {
             perBlocks: minedBlocks / (Object.values(generateKeys).reduce((sum, value) => sum + value, 0)),
-            perMinutes: elapsedSeconds / (Object.values(generateKeys).reduce((sum, value) => sum + value, 0))
         }
 
 
@@ -172,7 +244,7 @@ async function main() {
             formatNumber(minedBlocks),
             formatNumber(generateRc),
             formatNumber(generateTokens),
-            formatNumber(generateItems) + " | " + `${chalk.greenBright(`1 proc / ${formatNumber(Math.round(itemsAverage))} blocks`)}`
+            formatNumber(generateItems) + " | " + `${chalk.hex("edaaf8")(`1 item / ${formatNumber(Math.round(itemsAverage))} blocks`)}`
         ]);
 
         const secondTable = new Table({
@@ -193,16 +265,22 @@ async function main() {
             generateKeys.lunaire,
             generateKeys.astral,
             generateKeys.nebuleux,
-            `${Object.values(generateKeys).reduce((sum, value) => sum + value, 0)} | ` + `${chalk.greenBright(`1 keys /${formatNumber(Math.round(averageKeys.perBlocks))} blocks`)}`
+            `${Object.values(generateKeys).reduce((sum, value) => sum + value, 0)} | ` + `${chalk.hex("edaaf8")(`1 keys / ${formatNumber(Math.round(averageKeys.perBlocks))} blocks`)}`
         ])
 
-        console.log(chalk.bold(`Statistiques de la session de minage de ${config.pseudo}:`));
+        console.log(chalk.hex("F062BB")(`Session de ${config.pseudo} - UUID: ${sessionId}`));
+        console.log(`\n`)
         console.log(firstTable.toString());
-        console.log(secondTable.toString());
+        if (config.module.keys) {
+            console.log(secondTable.toString());
+        }
+        sessionManager.deleteSession(sessionId)
+        sessionManager.createSession(sessionId, config.pseudo, creationDate, elapsedMinutes, generateTokens, generateRc, generateItems, itemsAverage, minedBlocks)
     } catch (error) {
         console.error(chalk.red("Erreur lors de la récupération des données :"), error);
     }
 
+    console.log("\n")
     progressBar(60)
 }
 
@@ -210,5 +288,40 @@ async function startMonitoring() {
     await axiosPing();
     setInterval(main, 60000);
 }
+
+function showQuestionPopup(message, callback) {
+    const command = `powershell -command "Add-Type -AssemblyName PresentationFramework;[System.Windows.MessageBox]::Show('${message}', 'Sauvegarde de vos statistiques', 'YesNo', 'Question')"`;
+    exec(command, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Erreur lors de l'affichage de la pop-up: ${error}`);
+            callback(false);
+            return;
+        }
+        const response = stdout.trim();
+        callback(response === 'Yes');
+    });
+}
+
+process.on('SIGINT', () => {
+    showQuestionPopup('Voulez-vous sauvegarder cette session ? Cela vous permettra de pouvoir comparer vos statistiques dans le futur.', (response) => {
+        response ? null : sessionManager.deleteSession(sessionId);
+        process.exit(0);
+    });
+});
+
+process.on('SIGTERM', () => {
+    showQuestionPopup('Voulez-vous sauvegarder cette session ? Cela vous permettra de pouvoir comparer vos statistiques dans le futur.', (response) => {
+        response ? null : sessionManager.deleteSession(sessionId);
+        process.exit(0);
+    });
+});
+
+process.on('uncaughtException', (error) => {
+    console.error(chalk.red("Une exception non gérée a été détectée :"), error);
+    showQuestionPopup('Voulez-vous sauvegarder cette session ? Cela vous permettra de pouvoir comparer vos statistiques dans le futur.', (response) => {
+        response ? null : sessionManager.deleteSession(sessionId);
+        process.exit(1);
+    });
+});
 
 startMonitoring();
