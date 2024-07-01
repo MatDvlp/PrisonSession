@@ -134,7 +134,7 @@ console.log(chalk.hex("AD4CF5")("\n" +
 console.log(chalk.hex("F5944C").bold(`Génération de l'identifiant de votre session...`));
 const sessionId = uuidv4()
 const creationDate = Date.now()
-const sessionManager = new SessionManager('./sessions.json')
+const sessionManager = new SessionManager('./sessions/sessions.json')
 sessionManager.createSession(sessionId, config.pseudo, creationDate, "0", "0", "0", "0", "0", "0")
 console.log(chalk.hex("6BF54C")(`[+] L'identifiant a été généré avec succès : ${sessionId} !`))
 console.log(chalk.bold("Affichage de vos statistiques dans une minute, merci de patienter."))
@@ -210,7 +210,12 @@ async function main() {
          * Scanner proc
          */
         const generateItems = prisonPlayerData.data.stats[9].value - startItemsDropped;
-        const itemsAverage = minedBlocks / generateItems
+        let itemAverage;
+        if (generateItems > 0 && !isNaN(minedBlocks)) {
+            itemAverage = minedBlocks / generateItems
+        } else {
+            itemAverage =  0
+        }
 
         /*
          * Keys
@@ -220,8 +225,17 @@ async function main() {
             "astral": Math.abs(prisonPlayerData.data.keys.ASTRAL - startKeys.astral),
             "nebuleux": Math.abs(prisonPlayerData.data.keys.NEBULEUSE - startKeys.nebuleux)
         }
-        const averageKeys = {
-            perBlocks: minedBlocks / (Object.values(generateKeys).reduce((sum, value) => sum + value, 0)),
+        const totalKeysGenerated = Object.values(generateKeys).reduce((sum, value) => sum + value, 0);
+
+        let averageKeys;
+        if (totalKeysGenerated > 0 && !isNaN(minedBlocks)) {
+            averageKeys = {
+                perBlocks: minedBlocks / totalKeysGenerated
+            };
+        } else {
+            averageKeys = {
+                perBlocks: 0
+            };
         }
 
 
@@ -244,7 +258,10 @@ async function main() {
             formatNumber(minedBlocks),
             formatNumber(generateRc),
             formatNumber(generateTokens),
-            formatNumber(generateItems) + " | " + `${chalk.hex("edaaf8")(`1 item / ${formatNumber(Math.round(itemsAverage))} blocks`)}`
+            `${formatNumber(generateItems)} | ` +
+            (itemAverage !== 0
+                ? `${chalk.hex("edaaf8")(`1 proc / ${formatNumber(Math.round(itemAverage))} blocks`)}`
+                : `${chalk.hex("edaaf8")(`Aucune valeur`)}`)
         ]);
 
         const secondTable = new Table({
@@ -261,12 +278,16 @@ async function main() {
             }
         });
 
+
         secondTable.push([
             generateKeys.lunaire,
             generateKeys.astral,
             generateKeys.nebuleux,
-            `${Object.values(generateKeys).reduce((sum, value) => sum + value, 0)} | ` + `${chalk.hex("edaaf8")(`1 keys / ${formatNumber(Math.round(averageKeys.perBlocks))} blocks`)}`
-        ])
+            `${Object.values(generateKeys).reduce((sum, value) => sum + value, 0)} | ` +
+            (averageKeys.perBlocks !== 0
+                ? `${chalk.hex("edaaf8")(`1 keys / ${formatNumber(Math.round(averageKeys.perBlocks))} blocks`)}`
+                : `${chalk.hex("edaaf8")(`Aucune valeur`)}`)
+        ]);
 
         console.log(chalk.hex("F062BB")(`Session de ${config.pseudo} - UUID: ${sessionId}`));
         console.log(`\n`)
@@ -275,7 +296,7 @@ async function main() {
             console.log(secondTable.toString());
         }
         sessionManager.deleteSession(sessionId)
-        sessionManager.createSession(sessionId, config.pseudo, creationDate, elapsedMinutes, generateTokens, generateRc, generateItems, itemsAverage, minedBlocks)
+        sessionManager.createSession(sessionId, config.pseudo, creationDate, elapsedMinutes, generateTokens, generateRc, generateItems, itemAverage, minedBlocks)
     } catch (error) {
         console.error(chalk.red("Erreur lors de la récupération des données :"), error);
     }

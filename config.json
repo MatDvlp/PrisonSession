@@ -2,6 +2,6 @@
   "module": {
     "keys": true
   },
-  "api-token": "",
-  "pseudo": "HeWaitsForAdrien"
+  "api-token": "Put your token here",
+  "pseudo": "Put your pseudo here"
 }
