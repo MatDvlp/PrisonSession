@@ -1,2 +1,0 @@
-node sessions.js
-pause
