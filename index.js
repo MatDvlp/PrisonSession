@@ -158,14 +158,16 @@ async function axiosPing() {
             }
         });
 
-        startRc = prisonPlayerData.data.stats[8].value;
+        startRc = prisonPlayerData.data.stats[8].value == "9223372036848424000"
+            ? prisonPlayerData.data.currencies[0].amount
+            : prisonPlayerData.data.stats[8].value;
         startTokens = prisonPlayerData.data.stats[7].value;
         startItemsDropped = prisonPlayerData.data.stats[9].value;
         startBlockMined = prisonPlayerData.data.stats[3].value
         startKeys = {
-            "lunaire": prisonPlayerData.data.keys.LUNAIRE,
-            "astral": prisonPlayerData.data.keys.ASTRAL,
-            "nebuleux":  prisonPlayerData.data.keys.NEBULEUSE
+            "lunaire": prisonPlayerData.data.keys.LUNAIRE ?? 0,
+            "astral": prisonPlayerData.data.keys.ASTRAL ?? 0,
+            "nebuleux":  prisonPlayerData.data.keys.NEBULEUSE ?? 0
         }
 
     } catch (error) {
@@ -202,7 +204,9 @@ async function main() {
         /*
          * Ressources
          */
-        const generateRc = prisonPlayerData.data.stats[8].value - startRc;
+        const generateRc = prisonPlayerData.data.stats[8].value == "9223372036848424000"
+            ? prisonPlayerData.data.currencies[0].amount - startRc
+            : prisonPlayerData.data.stats[8].value - startRc;
         const generateTokens = prisonPlayerData.data.stats[7].value - startTokens;
         const minedBlocks = prisonPlayerData.data.stats[3].value - startBlockMined
 
@@ -221,11 +225,14 @@ async function main() {
          * Keys
          */
         const generateKeys = {
-            "lunaire": Math.abs(prisonPlayerData.data.keys.LUNAIRE - startKeys.lunaire),
-            "astral": Math.abs(prisonPlayerData.data.keys.ASTRAL - startKeys.astral),
-            "nebuleux": Math.abs(prisonPlayerData.data.keys.NEBULEUSE - startKeys.nebuleux)
+            "lunaire": (prisonPlayerData.data.keys.LUNAIRE ?? 0) - startKeys.lunaire,
+            "astral": (prisonPlayerData.data.keys.ASTRAL ?? 0) - startKeys.astral,
+            "nebuleux": (prisonPlayerData.data.keys.NEBULEUSE ?? 0) - startKeys.nebuleux
         }
         const totalKeysGenerated = Object.values(generateKeys).reduce((sum, value) => sum + value, 0);
+        const keysNotSavedDetected = (prisonPlayerData.data.keys.LUNAIRE ?? 0) < startKeys.lunaire ||
+            (prisonPlayerData.data.keys.ASTRAL ?? 0) < startKeys.astral ||
+            (prisonPlayerData.data.keys.NEBULEUSE ?? 0) < startKeys.nebuleux;
 
         let averageKeys;
         if (totalKeysGenerated > 0 && !isNaN(minedBlocks)) {
@@ -237,7 +244,6 @@ async function main() {
                 perBlocks: 0
             };
         }
-
 
         const firstTable = new Table({
             head: ['Temps écoulé', 'Blocs minés', 'RC générés', 'Tokens générés', 'Items proc'],
@@ -278,23 +284,27 @@ async function main() {
             }
         });
 
-
-        secondTable.push([
-            generateKeys.lunaire,
-            generateKeys.astral,
-            generateKeys.nebuleux,
-            `${Object.values(generateKeys).reduce((sum, value) => sum + value, 0)} | ` +
-            (averageKeys.perBlocks !== 0
-                ? `${chalk.hex("edaaf8")(`1 keys / ${formatNumber(Math.round(averageKeys.perBlocks))} blocks`)}`
-                : `${chalk.hex("edaaf8")(`Aucune valeur`)}`)
-        ]);
-
         console.log(chalk.hex("F062BB")(`Session de ${config.pseudo} - UUID: ${sessionId}`));
         console.log(`\n`)
         console.log(firstTable.toString());
+
         if (config.module.keys) {
-            console.log(secondTable.toString());
+            if(!keysNotSavedDetected) {
+                secondTable.push([
+                    generateKeys.lunaire,
+                    generateKeys.astral,
+                    generateKeys.nebuleux,
+                    `${Object.values(generateKeys).reduce((sum, value) => sum + value, 0)} | ` +
+                    (averageKeys.perBlocks !== 0
+                        ? `${chalk.hex("edaaf8")(`1 keys / ${formatNumber(Math.round(averageKeys.perBlocks))} blocks`)}`
+                        : `${chalk.hex("edaaf8")(`Aucune valeur`)}`)
+                ]);
+                console.log(secondTable.toString());
+            } else {
+                console.log(chalk.white("\n" + chalk.hex("f78891")(`Nous avons détecté que vous n'économisiez pas vos keys, il est impossible d'utiliser cette fonction sans garder ses keys. Merci de relancer une session si vous souhaitez économiser vos keys.`)))
+            }
         }
+
         sessionManager.deleteSession(sessionId)
         sessionManager.createSession(sessionId, config.pseudo, creationDate, elapsedMinutes, generateTokens, generateRc, generateItems, itemAverage, minedBlocks)
     } catch (error) {
